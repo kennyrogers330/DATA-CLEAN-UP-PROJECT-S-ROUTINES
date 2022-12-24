@@ -1,0 +1,130 @@
+*************************************************************************************************************************
+* 
+* THIS SUBROUTINE MAPS DATA FROM THE NIDA FILE TO THE RELEVANT CORE FIELDS OF R14
+*
+**************************************************************************************************************************
+    SUBROUTINE READ.SEQ.NIDA
+    $INSERT ../T24_BP I_COMMON
+    $INSERT ../T24_BP I_EQUATE
+    $INSERT ../T24_BP I_F.CUSTOMER
+	GOSUB NIDA
+	RETURN
+	NIDA:
+    FN.CU = "FBNK.CUSTOMER" ; F.CU = ""
+    CALL OPF(FN.CU,F.CU)
+    CALL GET.LOC.REF("CUSTOMER","FORBIRTH.COUTRY",B.COUNTRY)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE",PROV)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE1",PROV1)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRICT",DISTRICT)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRICT1",DISTRICT1)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTOR",SECTOR)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTOR1",SECTOR1)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CELL",CELL)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CELL1",CELL1)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE",VILLAGE)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE1",VILLAGE1)
+    SEQ.FILE.NAME='TEMENOS.SEQ'
+    RECORD.NAME='NIDAFILE.txt'
+    
+    OPENSEQ SEQ.FILE.NAME,RECORD.NAME TO SEQ.FILE.POINTER ELSE
+        CREATE SEQ.FILE.POINTER ELSE
+            CRT "Unable to create file pointer  to file ":SEQ.FILE.NAME
+            STOP
+        END
+    END
+    OPENSEQ SEQ.FILE.NAME, "NIDA.SEQ.WRITE.csv" TO OUT.FILE ELSE
+        CREATE OUT.FILE ELSE
+        END
+    END
+    CRT "Openseq was successful on  file":SEQ.FILE.NAME
+    DEBUG
+    LOOP
+        READSEQ Y.MSG FROM SEQ.FILE.POINTER ELSE EOF=1
+
+    WHILE NOT(EOF)
+        CU.ID = FIELD(Y.MSG,',',2)
+        CALL F.READ(FN.CU,CU.ID,R.CU.REC,F.CU,CU.ERROR)
+        LEGAL.ID = FIELD(Y.MSG,',',4)
+        COUNTRY.BRTH = FIELD(Y.MSG,',',30)
+        EXP.DATE = FIELD(Y.MSG,',',44)
+        PLACE.BRTH = FIELD(Y.MSG,',',46)
+        SEX = FIELD(Y.MSG,',',48)
+        DOB = FIELD(Y.MSG,',',50)
+        NATIONALITY = FIELD(Y.MSG,',',58)
+        PROVINCE = FIELD(Y.MSG,',',28)
+        DISTRICT = FIELD(Y.MSG,',',60)
+        SECTOR = FIELD(Y.MSG,',',42)
+        CELL = FIELD(Y.MSG,',',16)
+        VILLAGE = FIELD(Y.MSG,',',40)
+
+        EXP.DT = R.CU.REC<EB.CUS.LEGAL.EXP.DATE>
+        BRT.COUNTRY = R.CU.REC<EB.CUS.LOCAL.REF,B.COUNTRY>
+        MY.GENDER = R.CU.REC<EB.CUS.GENDER>
+        Y.DOB = R.CU.REC<EB.CUS.DATE.OF.BIRTH>
+        Y.NATIONALITY = R.CU.REC<EB.CUS.NATIONALITY>
+        PROVNC = R.CU.REC<EB.CUS.LOCAL.REF,PROV>
+        DSTRCT = R.CU.REC<EB.CUS.LOCAL.REF,DISTRICT>
+        Y.SECTOR = R.CU.REC<EB.CUS.LOCAL.REF,SECTOR>
+        Y.CELL = R.CU.REC<EB.CUS.LOCAL.REF,CELL>
+        Y.VILLAGE = R.CU.REC<EB.CUS.LOCAL.REF,VILLAGE>
+        
+        IF PROVINCE NE '' THEN
+          R.CU.REC<EB.CUS.LOCAL.REF,PROV> = PROVINCE
+          PROVNC = PROVINCE
+        END
+        IF DISTRICT NE '' THEN
+          R.CU.REC<EB.CUS.LOCAL.REF,DISTRICT> = DISTRICT
+          DSTRCT = DISTRICT
+        END
+        
+        IF SECTOR NE '' THEN
+         R.CU.REC<EB.CUS.LOCAL.REF,SECTOR> = SECTOR
+         Y.SECTOR = SECTOR
+        END
+        
+        IF CELL NE '' THEN
+           R.CU.REC<EB.CUS.LOCAL.REF,CELL> = CELL
+           Y.CELL = CELL
+        END
+        IF VILLAGE NE '' THEN
+          R.CU.REC<EB.CUS.LOCAL.REF,VILLAGE> = VILLAGE
+          Y.VILLAGE = VILLAGE
+          
+        END
+        IF EXP.DATE NE '' THEN
+            R.CU.REC<EB.CUS.LEGAL.EXP.DATE> = EXP.DATE
+            EXP.DT = EXP.DATE
+        END
+
+        IF COUNTRY.BRTH NE '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,B.COUNTRY> = COUNTRY.BRTH
+            BRT.COUNTRY = COUNTRY.BRTH
+        END
+
+        BEGIN CASE
+        CASE SEX = "F"
+            R.CU.REC<EB.CUS.GENDER> = "FEMALE"
+            MY.GENDER = "FEMALE"
+        CASE SEX = "M"
+            R.CU.REC<EB.CUS.GENDER> = "FEMALE"
+            MY.GENDER = "MALE"
+        CASE 1
+            R.CU.REC<EB.CUS.GENDER> = "OTHER"
+            MY.GENDER = "OTHER"
+        END CASE
+
+        IF DOB NE '' THEN
+        R.CU.REC<EB.CUS.DATE.OF.BIRTH> = DOB
+        Y.DOB = DOB
+    END
+
+    IF LEGAL.ID NE '' THEN
+        R.CU.REC<EB.CUS.NATIONALITY> = "RW"
+        Y.NATIONALITY = "RW"
+    END
+    
+   V.REC = CU.ID:',':EXP.DT:',':BRT.COUNTRY:',':MY.GENDER:',':Y.DOB:',':Y.NATIONALITY:',':PROVNC:',':DSTRCT:',':Y.SECTOR:',':Y.CELL:',':Y.VILLAGE
+            WRITESEQ V.REC ON OUT.FILE  ELSE PRINT 'ERROR NO FILE' 
+REPEAT
+RETURN
+END

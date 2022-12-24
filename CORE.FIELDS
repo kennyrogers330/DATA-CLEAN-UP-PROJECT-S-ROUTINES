@@ -1,0 +1,117 @@
+********************************************THIS ROUTINE UPDATE HOME PHONE AND OFFICE PHONE DETAILS OF THE R14 CUSTOMERS**********************************************************************  
+  SUBROUTINE CORE.FIELDS
+    $INSERT ../T24_BP I_COMMON
+    $INSERT ../T24_BP I_EQUATE
+    $INSERT ../T24_BP I_F.CUSTOMER
+
+    FN.CU = "FBNK.CUSTOMER" ; F.CU = ""
+    CALL OPF(FN.CU,F.CU)
+
+    CALL GET.LOC.REF("CUSTOMER","CUST.OFF.PHONE",PHONE.POS1)
+    CALL GET.LOC.REF("CUSTOMER","CUST.MOB.PHONE",CUST.MOB.PHONE)
+	CALL GET.LOC.REF("CUSTOMER","KCB.DOC.NAME",NAME.POS1)
+
+    SEP = '|'
+    YTODAY = TODAY
+
+    DIR.NAME="./FOLDER.BP"
+    FILE.ID="IDno.txt"
+    FILE.NAME=''
+
+    OPENSEQ DIR.NAME,FILE.ID TO FILE.NAME ELSE RETURN
+
+    OPENSEQ DIR.NAME, "CORE_UPDATED_KCBFILE.csv" TO OUT.FILE ELSE
+        CREATE OUT.FILE ELSE
+        END
+    END
+    SEP1="|"
+
+    DEBUG
+    LOOP
+
+        READSEQ R.SEQ.REC FROM FILE.NAME ELSE YEOF = 1
+
+    WHILE NOT(YEOF) DO
+        CU.ID = FIELD(R.SEQ.REC,',',1)
+        CALL F.READ(FN.CU,CU.ID,R.CU.REC,F.CU,CU.ERROR)
+
+        OFF.PHONE = R.CU.REC<EB.CUS.OFF.PHONE>
+        PHONE1 = R.CU.REC<EB.CUS.PHONE.1>
+
+		LEGAL.DOC.NAME =  R.CU.REC<EB.CUS.LEGAL.DOC.NAME>
+        DOC.NAME = R.CU.REC<EB.CUS.LOCAL.REF,NAME.POS1>
+        
+        LOCAL.OFF.PHONE = R.CU.REC<EB.CUS.LOCAL.REF,PHONE.POS1>
+        CUST.MOB.PHNE = R.CU.REC<EB.CUS.LOCAL.REF,CUST.MOB.PHONE>
+
+        EMAIL1 = R.CU.REC<EB.CUS.EMAIL.1>
+		
+		IF DOC.NAME EQ 'NATIONAL.ID' THEN 
+        CRT "Y"
+        R.CU.REC<EB.CUS.LEGAL.DOC.NAME> = 'Id Rwanda'
+        LEGAL.DOC.NAME = 'Id Rwanda'
+        END
+        
+
+        IF LOCAL.OFF.PHONE NE '' THEN
+            R.CU.REC<EB.CUS.OFF.PHONE> = LOCAL.OFF.PHONE
+            R.CU.REC<EB.CUS.PHONE.1> = LOCAL.OFF.PHONE
+            OFF.PHONE = LOCAL.OFF.PHONE
+            PHONE1 = LOCAL.OFF.PHONE
+            
+        END
+        
+        BEGIN CASE
+
+        CASE CUST.MOB.PHNE NE ''
+
+            IF OFF.PHONE EQ '' THEN
+                R.CU.REC<EB.CUS.OFF.PHONE> = CUST.MOB.PHNE
+                OFF.PHONE = CUST.MOB.PHNE
+            END
+
+            IF PHONE1 EQ '' THEN
+                R.CU.REC<EB.CUS.PHONE.1> = CUST.MOB.PHNE
+                PHONE1 = CUST.MOB.PHNE
+            END
+        END CASE
+        
+        BEGIN CASE 
+          CASE OFF.PHONE NE ''
+              IF LOCAL.OFF.PHONE EQ '' THEN
+                  R.CU.REC<EB.CUS.LOCAL.REF,PHONE.POS1> = OFF.PHONE
+              END 
+              
+              IF CUST.MOB.PHNE EQ '' THEN
+                  R.CU.REC<EB.CUS.LOCAL.REF,CUST.MOB.PHONE> = OFF.PHONE
+              END
+              
+              IF PHONE1 EQ '' THEN
+                  R.CU.REC<EB.CUS.PHONE.1> = OFF.PHONE
+              END
+        END CASE
+        
+        BEGIN CASE 
+        CASE PHONE1 NE '' 
+          
+          IF LOCAL.OFF.PHONE EQ '' THEN
+                  R.CU.REC<EB.CUS.LOCAL.REF,PHONE.POS1> = PHONE1
+          END 
+          
+          IF CUST.MOB.PHNE EQ '' THEN
+                  R.CU.REC<EB.CUS.LOCAL.REF,CUST.MOB.PHONE> = PHONE1
+          END
+          
+          IF OFF.PHONE EQ '' THEN
+              R.CU.REC<EB.CUS.OFF.PHONE> = PHONE1
+          END   
+        END CASE
+        
+        CALL F.WRITE(FN.CU, CU.ID, R.CU.REC)
+        CALL JOURNAL.UPDATE(CU.ID)
+
+        V.REC = CU.ID:',':PHONE1:',':OFF.PHONE:',':LOCAL.OFF.PHONE:',':CUST.MOB.PHNE
+        WRITESEQ V.REC ON OUT.FILE  ELSE PRINT 'ERROR NO FILE'
+    REPEAT
+    RETURN
+END

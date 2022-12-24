@@ -1,0 +1,184 @@
+*************************************************************************************************************************
+* 
+* Jbase Programming overview Part 2
+*
+**************************************************************************************************************************
+
+SUBROUTINE TRG.TEST2
+$INSERT I_COMMON
+$INSERT I_EQUATE
+$INSERT I_F.ACCOUNT
+GOSUB INIT
+GOSUB OPENFILES
+GOSUB PROCESS
+RETURN
+INIT:
+		DEBUG
+		FN.ACC = 'F.ACCOUNT'
+		F.ACC = ''
+		Y.ACC.ID = ''
+		R.ACC = ''
+		Y.ACC.ERR = ''
+RETURN
+OPENFILES:
+		CALL OPF(FN.ACC,F.ACC)	;* Open File
+		
+RETURN
+PROCESS:
+		SEL.CMD = "SELECT ":FN.ACC
+		CALL EB.READLIST(SEL.CMD,SEL.LIST,'',NO.OF.REC,RET.CODE)
+		LOOP
+		REMOVE Y.ACC.ID FROM SEL.LIST SETTING POS
+		
+		*CALL F.READ(FN.ACC,Y.ACC.ID,R.ACC,F.ACC,Y.ACC.ERR)  ;* Read Record
+		CALL F.READU(FN.ACC,Y.ACC.ID,R.ACC,F.ACC,Y.ACC.ERR,'')  ;* Read Record
+		CRT "Currency : ": R.ACC<AC.CURRENCY>
+		CRT "Category : ": R.ACC<AC.CATEGORY>
+		R.ACC<AC.ACCOUNT.TITLE.2> = "From Training" ; *Set value
+		CALL F.WRITE(FN.ACC,Y.ACC.ID,R.ACC) ; *Write record to Cash memory
+		CALL JOURNAL.UPDATE('') 			;* flush the record data to the database
+		CALL F.RELEASE(FN.ACC,Y.ACC.ID,F.ACC) ; *Release the lock
+		
+		REPEAT
+RETURN
+END
+
+													F.WRITE AND JOURNAL.UPDATE
+												==============================
+	To ensure that all writes within a transaction go through correctly and then
+	the database is updated, F.WRITE cashes the data first. A call to a core routine called JOURNAL.UPDATE is 
+	what actually writes the data from cashe to disk. 
+
+
+														F.READU
+														=======
+				Syntax
+						CALL F.READU(Filename,key,Record,File path,ErrorVariable,Option)
+				Example
+						CALL F.READU(FN.ACC,'575311271190252',R.ACC,F.ACC,Y.ACC.ERR,'')
+						
+												EB.READLIST
+											  	===============
+	syntax
+			CALL EB.READLIST(Sectcommand,SelectedList,'',NoOfRecordsSelected,ReturnCode)
+	example
+	
+				SEL.CMD = "SELECT ":FN.ACC
+				CALL EB.READLIST(SEL.CMD,SEL.LIST,'',NO.OF.REC,RET.CODE)
+											
+											OPF API
+											=======
+											
+Syntax
+	CALL OPF(Parameter1,Parameter2)
+Example
+	
+	FN.ACC = 'F.ACCOUNT' *File Name
+	F.ACC = '' *File Path
+	CALL OPF(FN.ACC,F.ACC) *Open the File
+	
+	ID.NEW(ID of the currently Opened record)
+	R.NEW(Contents of the currently opened record)
+	
+									F.READ
+									======
+	CALL F.READ(Filename,key,Record,File path,ErrorVariable)
+	
+	example
+			CALL F.READ(FN.ACC,"11967",R.ACCOUNT,F.ACC,Y.ACC.ERR)
+			
+	=========================SUBROUTINE TO READ FROM ACCOUNT=====================
+	
+	SUBROUTINE TRG.TEST1
+	$INSERT I_COMMON
+	$INSERT I_EQUATE
+	FN.ACC= 'F.ACCOUNT'
+	F.ACC=''
+	Y.ACC.ID=11967
+	R.ACC=''
+	Y.ACC.ERR=''
+	CALL OPF (FN.ACC,F.ACC)
+	CALL
+	F.READ(FN.ACC,Y.ACC.ID,R.ACC,F.ACC,Y.ACC.ERR)
+	RETURN
+	END
+	
+									SEQUENTIAL FILES
+									================
+	jsh rwdev ~ -->CREATE.FILE TEMENOS.SEQ TYPE=UD
+	
+					[ 417 ] File TEMENOS.SEQ]D created , type = UD
+					[ 417 ] File TEMENOS.SEQ created , type = UD
+					
+	jsh rwdev ~ -->JED TEMENOS.SEQ SEQ.FILE
+
+
+File TEMENOS.SEQ , Record 'SEQ.FILE'                                                                                Insert      19:26:22
+Command->
+
+PROGRAM SEQ.FILE
+$INSERT ../T24_BP I_COMMON
+$INSERT ../T24_BP I_EQUATE
+
+SEQ.FILE.NAME='TEMENOS.SEQ'
+RECORD.NAME='1'
+OPENSEQ SEQ.FILE.NAME,RECORD.NAME TO SEQ.FILE.POINTER ELSE
+CREATE SEQ.FILE.POINTER ELSE
+CRT "Unable to create file pointer  to file ":SEQ.FILE.NAME
+		STOP
+	END
+END
+CRT "Openseq was successful on  file":SEQ.FILE.NAME
+
+
+WRITESEQ "Infobasic programming" TO SEQ.FILE.POINTER ELSE
+	CRT "Unable to perform WRITESEQ"
+END
+
+WRITESEQ "Writing in sequential files" APPEND TO SEQ.FILE.POINTER 
+	ELSE
+	CRT "Unable to perform WRITESEQ"
+END
+
+CLOSESEQ SEQ.FILE.POINTER
+END
+
+==================================================SUBROUTINE TO READ FROM ACCOUNT===================================================
+File TEMENOS.SEQ , Record 'READ.SEQ.FILE'                                                                           Insert      19:25:07
+Command->
+    PROGRAM READ.SEQ.FILE
+    $INSERT ../T24_BP I_COMMON
+    $INSERT ../T24_BP I_EQUATE
+
+    SEQ.FILE.NAME='TEMENOS.SEQ'                     
+    RECORD.NAME='1'
+    OPENSEQ SEQ.FILE.NAME,RECORD.NAME TO SEQ.FILE.POINTER ELSE
+        CREATE SEQ.FILE.POINTER ELSE
+            CRT "Unable to create file pointer  to file ":SEQ.FILE.NAME
+            STOP
+        END
+    END
+    CRT "Openseq was successful on  file":SEQ.FILE.NAME
+*READSEQ Y.MSG FROM SEQ.FILE.POINTER THEN
+* CRT "Message Extracted :":Y.MSG
+*END
+*ELSE
+*      CRT "Unable to read from file "
+*END
+LOOP
+    READSEQ Y.MSG FROM SEQ.FILE.POINTER ELSE EOF=1
+WHILE NOT(EOF)
+    CRT "Message Extracted :":Y.MSG
+REPEAT
+END
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ---Alternatvely ++++++++++++++++++++++++++++++++++++++=
+	*SEQ.FILE.NAME= './TEMENOS.SEQ/1'
+	*OPENSEQ SEQ.FILE.NAME TO SEQ.FILE.POINTER ELSE
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	
+Once a sequential file is opened, only one type of operation can be performed
+on the file - Either READ or WRITE
+
+In order to perform another operation (Either READ or WRITE), 
+the file needs to be closed and opened again.

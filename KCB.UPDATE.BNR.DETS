@@ -1,0 +1,436 @@
+*************************************************************************************************************************
+* 
+* THIS ROUTINE MAPS DATA FROM THE NIDA FILE TO THE RELEVANT CORE FIELDS OF R14
+*
+**************************************************************************************************************************
+
+
+
+    PROGRAM KCB.UPDATE.BNR.DETS
+
+    $INCLUDE ../T24_BP I_COMMON
+    $INCLUDE ../T24_BP I_EQUATE
+    $INCLUDE ../T24_BP I_F.CUSTOMER
+
+    GOSUB INIT
+    GOSUB PROCESS
+
+    RETURN
+
+INIT:
+
+    FN.CU = 'FBNK.CUSTOMER'
+    F.CU = ''
+    CALL OPF(FN.CU,F.CU)
+
+    CALL GET.LOC.REF("CUSTOMER","KCB.DOC.ID",ID.POS)
+    CALL GET.LOC.REF("CUSTOMER","LEGAL.STATUS",LEGAL.POS1)
+!CALL GET.LOC.REF("CUSTOMER","CUST.TYPE",POS10)
+    CALL GET.LOC.REF("CUSTOMER","CUST.TYPE",POS11)
+    CALL GET.LOC.REF("CUSTOMER","CUS.RELATED.PTY",POS37)
+    CALL GET.LOC.REF("CUSTOMER","CU.RELATION.TYP",POS38)
+    CALL GET.LOC.REF("CUSTOMER","NAICS.CODE",NAICS.POS)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE",PROV)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE",VILL.POS)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLA",VILL.POB)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVIN",PROV.POB)
+    CALL GET.LOC.REF("CUSTOMER","CUS.SE.CLASS",POS34)
+    CALL GET.LOC.REF("CUSTOMER","KIN.MOBILE.NO",KIN.PHONE)
+    CALL GET.LOC.REF("CUSTOMER","CUS.DEGREE.LVL",POS1001)
+    CALL GET.LOC.REF("CUSTOMER","FIELD.STUDY",POS1002)
+    CALL GET.LOC.REF("CUSTOMER","CUST.EMAIL.ID",CUST.EMAIL.ID)
+    CALL GET.LOC.REF("CUSTOMER","CONTACT.EMAIL",CONTACT.EMAIL)
+    CALL GET.LOC.REF("CUSTOMER","CUST.OFF.PHONE",PHONE.POS1)
+    CALL GET.LOC.REF("CUSTOMER","CUST.MOB.PHONE",CUST.MOB.PHONE)
+    CALL GET.LOC.REF("CUSTOMER","KCB.DOC.NAME",NAME.POS1)
+    CALL GET.LOC.REF("CUSTOMER","OCCUPATION1",OCC.PO1)
+
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE",PHY.PROV)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRICT",PHY.DISTRICT)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTOR",PHY.SECTOR)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CELL",PHY.CELL)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE",PHY.VILLAGE)
+
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVIN",BIRTH.PROV)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRI",BIRTH.DISTRICT)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTO",BIRTH.SECTOR)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CEL",BIRTH.CELL)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLA",BIRTH.VILLAGE)
+
+    RETURN
+
+PROCESS:
+
+    DEBUG
+
+    SEL.CU = 'SSELECT ':FN.CU
+    CALL EB.READLIST(SEL.CU,CU.LIST,'',CU.CNT,'')
+
+    LOOP
+        REMOVE CU.ID FROM CU.LIST SETTING MORECU
+    WHILE CU.ID:MORECU
+
+        CALL F.READ(FN.CU,CU.ID,R.CU.REC,F.CU,CU.ERR)
+        MY.SECTOR = R.CU.REC<EB.CUS.SECTOR>
+
+        Y.LEGAL.ID = R.CU.REC<EB.CUS.LOCAL.REF,ID.POS>
+        DOC.NAME = R.CU.REC<EB.CUS.LOCAL.REF,NAME.POS1>
+
+        BEGIN CASE
+        CASE DOC.NAME = "DRIVING.LICENSE"
+            DOC.NAME =  'DRIVING.LICENSE'
+        CASE DOC.NAME = "PASSPORT.NO"
+            DOC.NAME =  'PASSPORT'
+        CASE DOC.NAME = "CERT.OF.INCORP"
+            DOC.NAME =  'INCORP.CERT'
+        CASE DOC.NAME = "ALIEN.ID"
+            DOC.NAME =  'ALIEN.ID'
+        CASE DOC.NAME = "BIRTH.CERT"
+            DOC.NAME =  'BIRTH.CERTIFICATE'
+        CASE DOC.NAME = "ID.BI"
+            DOC.NAME =  'ID.BURUNDI'
+        CASE DOC.NAME = "NATIONAL.ID"
+            DOC.NAME =  'ID.KE'
+        CASE DOC.NAME = "ID.RW"
+            DOC.NAME =  'ID.RWANDA'
+        CASE DOC.NAME = "ID.SS"
+            DOC.NAME =  'ID.SOUTH.SUDAN'
+        CASE DOC.NAME = "ID.TZ"
+            DOC.NAME =  'ID.TZ'
+        CASE DOC.NAME = "SOCIAL.SECURITY.NO"
+            DOC.NAME =  'SOCIAL.SECURITY.NO'
+        CASE DOC.NAME = "ID.UG"
+            DOC.NAME =  'ID.UG'
+        CASE DOC.NAME = "CERT.OF.REGN"
+            DOC.NAME =  'CERT.OF.REG'
+        END CASE
+
+        DOC.ARR = "DRIVING.LICENSE":VM:"PASSPORT":VM:"ALIEN.ID":VM:"BIRTH.CERTIFICATE":VM:"ID.BURUNDI":VM:"ID.KE":VM:"ID.RWANDA":VM:"ID.SOUTH.SUDAN":VM:"ID.TZ":VM:"SOCIAL.SECURITY.NO":VM:"ID.UG"
+
+        Y.CORE.DOC.TYPE = R.CU.REC<EB.CUS.LEGAL.DOC.NAME>
+        IF Y.CORE.DOC.TYPE EQ '' THEN
+            R.CU.REC<EB.CUS.LEGAL.DOC.NAME> = DOC.NAME
+        END
+
+        CORE.LEGAL.ID = R.CU.REC<EB.CUS.LEGAL.ID>
+        IF CORE.LEGAL.ID = '' THEN
+            R.CU.REC<EB.CUS.LEGAL.ID> = DOC.ID
+        END
+
+!--------------------------------------------------------------------------
+!---------------------------EMAIL
+
+        CUS.EMAIL.ID = R.CU.REC<EB.CUS.LOCAL.REF,CUST.EMAIL.ID>
+        CONTCT.EMAIL = R.CU.REC<EB.CUS.LOCAL.REF,CONTACT.EMAIL>
+        EMAIL1 = R.CU.REC<EB.CUS.EMAIL.1>
+
+        IF CUS.EMAIL.ID NE '' AND EMAIL1 EQ '' THEN
+            R.CU.REC<EB.CUS.EMAIL.1> = CUS.EMAIL.ID
+        END
+!--------------------------------------------------------------------------
+!--------------------------LEGAL ID
+
+        DOC.ID = R.CU.REC<EB.CUS.LOCAL.REF,ID.POS>
+        LEGAL.ID = R.CU.REC<EB.CUS.LEGAL.ID>
+
+        IF LEGAL.ID = '' AND DOC.ID NE '' THEN
+            R.CU.REC<EB.CUS.LEGAL.ID> = DOC.ID
+        END
+
+!-------------------------------------------------------------------------
+!---------------------------LOCAL PHONE
+
+        LOCAL.OFF.PHONE = R.CU.REC<EB.CUS.LOCAL.REF,PHONE.POS1>
+        Y.CORE.LOC.PHONE = R.CU.REC<EB.CUS.OFF.PHONE>
+
+        CUST.MOB.PHNE = R.CU.REC<EB.CUS.LOCAL.REF,CUST.MOB.PHONE>
+
+        IF LOCAL.OFF.PHONE NE '' AND Y.CORE.LOC.PHONE EQ '' THEN
+            R.CU.REC<EB.CUS.OFF.PHONE> = LOCAL.OFF.PHONE
+        END
+
+!-------------------------------------------------------------------------
+!---------------------------MOB PHONE
+
+        CUST.MOB.PHNE = R.CU.REC<EB.CUS.LOCAL.REF,CUST.MOB.PHONE>
+        Y.CORE.OFF.PHONE = R.CU.REC<EB.CUS.PHONE.1>
+
+        IF CUST.MOB.PHNE NE '' AND Y.CORE.OFF.PHONE EQ '' THEN
+            R.CU.REC<EB.CUS.PHONE.1> = Y.CORE.OFF.PHONE
+        END
+
+        IF R.CU.REC<EB.CUS.PHONE.1> EQ '' THEN
+            R.CU.REC<EB.CUS.PHONE.1> = '+250788140000'
+        END
+
+        IF R.CU.REC<EB.CUS.OFF.PHONE> EQ '' THEN
+            R.CU.REC<EB.CUS.OFF.PHONE> = '+250788187200'
+        END
+
+!--------------------------------------------------------------------------
+!-------------------------GENDER
+
+        MY.SALUTATION = R.CU.REC<EB.CUS.TITLE>
+        Y.GENDER = R.CU.REC<EB.CUS.GENDER>
+        Y.LEGAL.STATUS = R.CU.REC<EB.CUS.LOCAL.REF,LEGAL.POS1>
+
+        BEGIN CASE
+        CASE Y.GENDER EQ ''
+            IF MY.SALUTATION = "MR" AND Y.GENDER EQ '' THEN
+                R.CU.REC<EB.CUS.GENDER>= "MALE"
+            END
+
+            IF MY.SALUTATION = "MRS" AND Y.GENDER  THEN
+                R.CU.REC<EB.CUS.GENDER>= "FEMALE"
+            END
+
+            IF MY.SALUTATION = "MS" AND Y.GENDER EQ '' THEN
+                R.CU.REC<EB.CUS.GENDER>= "FEMALE"
+            END
+
+!CASE Y.GENDER ''
+!IF MY.SALUTATION EQ '' THEN
+!R.CU.REC<EB.CUS.GENDER>= "CORPORATE"
+!END
+
+        CASE Y.GENDER EQ "MALE"
+            IF MY.SALUTATION = "" THEN
+                R.CU.REC<EB.CUS.TITLE>= "MR"
+            END
+
+        CASE Y.GENDER EQ "FEMALE"
+            IF MY.SALUTATION = "" THEN
+                R.CU.REC<EB.CUS.TITLE>= "MISS"
+
+            END
+        CASE Y.GENDER EQ "CORPORATE"
+            IF MY.SALUTATION = "" THEN
+                R.CU.REC<EB.CUS.TITLE> = "COMPANY"
+                R.CU.REC<EB.CUS.LOCAL.REF,LEGAL.POS1>= "3"
+            END
+        END CASE
+
+!---------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+        MY.MARITAL.STATUS = R.CU.REC<EB.CUS.MARITAL.STATUS>
+        MY.RELATED.PARTY = R.CU.REC<EB.CUS.LOCAL.REF,POS37>
+        CLIENTTYPE = R.CU.REC<EB.CUS.LOCAL.REF,POS11>
+
+        IF DOC.NAME MATCHES DOC.ARR THEN
+            IF CLIENTTYPE EQ '' THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,POS11> ='I'
+            END
+        END ELSE
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> ='CORPORATE'
+            R.CU.REC<EB.CUS.GENDER>= "COMPANY"
+        END
+
+        IF LEN(Y.LEGAL.ID) EQ '16' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'I'
+
+            IF Y.LEGAL.ID[6] = 7 THEN
+                Y.GENDER = 'FEMALE'
+                IF MY.MARITAL.STATUS EQ 'MARRIED' THEN
+                    R.CU.REC<EB.CUS.TITLE>= "MRS"
+                END ELSE
+                    R.CU.REC<EB.CUS.TITLE>= "MISS"
+                END
+                R.CU.REC<EB.CUS.GENDER> = 'FEMALE'
+            END ELSE
+                Y.GENDER = 'MALE'
+                R.CU.REC<EB.CUS.TITLE>= "MR"
+                R.CU.REC<EB.CUS.GENDER> = 'MALE'
+            END
+        END
+
+        IF CLIENTTYPE EQ '' AND Y.GENDER EQ "FEMALE" THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'I'
+        END
+
+        IF CLIENTTYPE EQ '' AND Y.GENDER EQ "MALE" THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'I'
+        END
+
+        IF CLIENTTYPE EQ '' AND Y.GENDER EQ "COMPANY" THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'CORPORATE'
+        END
+
+        BEGIN CASE
+        CASE CLIENTTYPE EQ "OTHERS" AND Y.GENDER = ""
+            R.CU.REC<EB.CUS.GENDER> = "OTHER"
+
+        CASE CLIENTTYPE EQ "CORPORATE" AND Y.GENDER EQ ''
+            R.CU.REC<EB.CUS.GENDER>= "COMPANY"
+
+        CASE CLIENTTYPE EQ "CORPORATE" AND MY.MARITAL.STATUS NE "NA"
+            R.CU.REC<EB.CUS.MARITAL.STATUS>= "NA"
+
+        CASE CLIENTTYPE EQ "I" AND MY.MARITAL.STATUS = ""
+            R.CU.REC<EB.CUS.MARITAL.STATUS>= "SINGLE"
+
+            MY.OCCUPATION = R.CU.REC<EB.CUS.LOCAL.REF,OCC.PO1>
+            IF  MY.OCCUPATION = "" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,OCC.PO1> = "9622"
+            END
+
+            MY.INDUSTRY = R.CU.REC<EB.CUS.INDUSTRY>
+            IF MY.INDUSTRY = "" THEN
+                R.CU.REC<EB.CUS.INDUSTRY> = "9999"
+            END
+
+            IF CLIENTTYPE EQ "I" AND  MY.SECTOR = "" THEN
+                R.CU.REC<EB.CUS.SECTOR>= "9000"
+            END
+
+            MY.NAICS.CODE = R.CU.REC<EB.CUS.LOCAL.REF,NAICS.POS>
+            IF MY.NAICS.CODE = "" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,NAICS.POS> = "541990"
+            END
+
+            MY.LEGAL.STATUS = R.CU.REC<EB.CUS.LOCAL.REF,LEGAL.POS1>
+            IF Y.GENDER EQ "COMPANY" AND MY.LEGAL.STATUS = "" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,LEGAL.POS1>= "3"
+            END
+
+            IF MY.OCCUPATION EQ "1420" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,OCC.PO1> = "9622"
+            END
+
+            MY.SE.CLASS = R.CU.REC<EB.CUS.LOCAL.REF,POS34>
+            IF Y.GENDER EQ "MALE" AND MY.SE.CLASS = "" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,POS34> = "9999"
+            END
+
+            MY.PLACE.OF.BIRTH = R.CU.REC<EB.CUS.LOCAL.REF,PROV.POB>
+            IF MY.PLACE.OF.BIRTH = "" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,PROV.POB> = R.CU.REC<EB.CUS.LOCAL.REF,PROV>
+            END
+
+            MY.VILLAGE =  R.CU.REC<EB.CUS.LOCAL.REF,VILL.POS>
+            IF R.CU.REC<EB.CUS.LOCAL.REF,VILL.POB> = "" THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,VILL.POB> = MY.VILLAGE
+            END
+
+            IF MY.SALUTATION EQ "MR" AND Y.GENDER EQ "FEMALE" THEN
+                R.CU.REC<EB.CUS.GENDER> = "MALE"
+            END
+
+            IF MY.SALUTATION EQ "MRS" AND Y.GENDER EQ "MALE" THEN
+                R.CU.REC<EB.CUS.GENDER> = "FEMALE"
+            END
+
+!R.CU.REC<EB.CUS.KYC.COMPLETE> = 'YES'
+
+            IF MY.SE.CLASS EQ '' THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,POS34> = '9999'
+            END
+
+            KIN.PHN = R.CU.REC<EB.CUS.LOCAL.REF,KIN.PHONE>
+            IF KIN.PHN EQ '' THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,KIN.PHONE> = '+250788187200'
+            END
+
+            MY.EDUCATION = R.CU.REC<EB.CUS.LOCAL.REF,POS1001>
+            IF MY.EDUCATION EQ '' THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,POS1001> = '4'
+                R.CU.REC<EB.CUS.LOCAL.REF,POS1002> = 'OTHER'
+            END
+
+            Y.LEGAL.ID = R.CU.REC<EB.CUS.LOCAL.REF,ID.POS>
+
+            IF Y.LEGAL.ID EQ '' THEN
+                Y.LEGAL.ID = R.CU.REC<EB.CUS.LEGAL.ID>
+            END
+
+            IF LEN(Y.LEGAL.ID) EQ '16' THEN
+
+                IF Y.LEGAL.ID[6] = 7 THEN
+                    Y.GENDER = 'FEMALE'
+                    R.CU.REC<EB.CUS.TITLE>= "MISS"
+                END ELSE
+                    Y.GENDER = 'MALE'
+                    R.CU.REC<EB.CUS.TITLE>= "MR"
+                END
+
+                IF R.CU.REC<EB.CUS.RESIDENCE> = '' THEN
+                    R.CU.REC<EB.CUS.RESIDENCE> = 'RW'
+                END
+
+                IF R.CU.REC<EB.CUS.NATIONALITY> = '' THEN
+                    R.CU.REC<EB.CUS.NATIONALITY> = 'RW'
+                END
+
+            END
+
+            IF R.CU.REC<EB.CUS.GENDER> EQ '' THEN
+                R.CU.REC<EB.CUS.GENDER> = Y.GENDER
+            END
+
+        END CASE
+
+        IF MY.RELATED.PARTY = "" THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS37> = "NON"
+        END
+
+        IF R.CU.REC<EB.CUS.LOCAL.REF,POS38> = "" THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS38> = '44'
+        END
+
+!-----------------------------------------------------------------------------------
+!------------------------------Physical Address
+
+        IF R.CU.REC<EB.CUS.LOCAL.REF,PHY.PROV> EQ '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,PHY.PROV> = 'OL05000005'
+        END
+
+        IF R.CU.REC<EB.CUS.LOCAL.REF,PHY.DISTRICT> EQ '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,PHY.DISTRICT> = 'OL04000005'
+        END
+
+        IF R.CU.REC<EB.CUS.LOCAL.REF,PHY.SECTOR> EQ '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,PHY.SECTOR> = 'OL03000045'
+        END
+
+        IF R.CU.REC<EB.CUS.LOCAL.REF,PHY.CELL> EQ ''THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,PHY.CELL> = 'OL02000215'
+    END
+
+    IF R.CU.REC<EB.CUS.LOCAL.REF,PHY.VILLAGE> EQ '' THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,PHY.VILLAGE> = 'OL01000673'
+    END
+
+!-----------------------------------------------------------------------------------
+!------------------------------Place of Birth details
+
+    IF R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.PROV> EQ '' THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.PROV> = 'OL05000005'
+    END
+
+    IF R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.DISTRICT> EQ '' THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.DISTRICT> = 'OL04000005'
+    END
+
+    IF R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.SECTOR> EQ '' THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.SECTOR> = 'OL03000045'
+    END
+
+    IF R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.CELL> EQ '' THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.CELL> = 'OL02000215'
+    END
+
+    IF R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.VILLAGE> EQ'' THEN
+        R.CU.REC<EB.CUS.LOCAL.REF,BIRTH.VILLAGE> = 'OL01000673'
+    END
+
+!-----------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------
+!WRITE R.CU.REC TO F.CU, CU.ID
+
+    CALL F.WRITE(FN.CU, CU.ID, R.CU.REC)
+    CALL JOURNAL.UPDATE(CU.ID)
+
+    KK = KK + 1
+    PRINT "PROCESSING RECORD NUMBER ":KK:" CUSTOMER ID ":CU.ID
+
+REPEAT
+RETURN

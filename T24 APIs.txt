@@ -1,0 +1,221 @@
+*************************************************************************************************************************
+* 
+* Jbase Programming overview Part 1
+*
+**************************************************************************************************************************
+
+
+	Creating a file to store the programs
+       ======================================
+   CREATE.FILE TRG.BP TYPE=UD
+			jsh area1 ~ -->CREATE.FILE MKR.BP TYPE=UD
+				[ 417 ] File MKR.BP]D created , type = UD
+				[ 417 ] File MKR.BP created , type = UD
+
+			Program Skeleton
+			=====================
+* Comments
+* Author
+* Date of creation
+* Ammendment date and amendment details
+
+PROGRAM <Program Name>
+
+-----------------------
+
+------------------------
+
+END 
+
+jsh area1 ~/MKR.BP -->ls -l
+total 16
+-rw-rw-r--    1 area1    TAFC           2029 Jul 01 01:27 $FIRST.BP
+-rw-rw-r--    1 area1    TAFC             52 Jul 01 01:27 FIRST.BP
+
+CATALOGING: 
+==========
+Refers to the process of placing the executable in a directory in which the 
+underlying system will search for executables when the user executes the program 
+
+> The environment variable that controls where the executable will be stored one
+	cataloging : JBCDEV_BIN 
+> The environment variable that holds the search path of executables : PATH
+
+jsh area1 ~ -->CATALOG MKR.BP FIRST.BP
+FIRST.BP
+Object FIRST.BP cataloged successfully
+jsh area1 ~ -->
+
+						FILE STRUCTURE
+						==============
+
+> CREATE.FILE TRAINER TYPE=J4 3,2,2 4,2,2
+						
+						CONTROL STRUCTURE
+						=================
+						
+						IF
+						==
+IF <condition> THEN
+<statements>
+END
+
+IF <condition> THEN
+<statements>
+END ELSE
+<statements>
+END
+
+					CASE
+					====
+BEGIN CASE
+CASE <variable> = <value>
+<statements>
+CASE <variable> = <value>
+<statements>
+CASE <variable> = <value>
+<statements>
+CASE 1		//Default value
+<statements>
+END CASE
+					FOR NEXT
+					========
+FOR <variable> = <initval> TO <maxval>
+<statements>
+NEXT <variablename>
+
+LOOP 
+	WHILE <Condition>
+	<statements>
+	if <Condition> THEN BREAK
+	<statements>
+REPEAT
+
+	GLOBAL VARIABLES 
+	================
+> JED MKR.BP I_TRG.COMMON
+
+File MKR.BP , Record 'I_TRG.COMMON'                                                                                 Insert      16:49:40
+Command->
+0001 COM /TRG.COMMON.VARIABLES/ A,B
+
+File MKR.BP , Record 'FIRST.BP'                                                                                     Insert      17:05:29
+Command->
+0001 PROGRAM FIRST.BP
+0002 $INCLUDE MKR.BP I_TRG.COMMON
+0003 CRT "Welcome to R12FI"
+0004 A = 4
+0005 B = 5
+0006 CRT A
+0007 CRT B
+0008 END
+
+File MKR.BP , Record 'FIRST2.BP'                                                                                    Insert      17:06:03
+Command->
+0001 PROGRAM FIRST2.BP
+0002 $INCLUDE MKR.BP I_TRG.COMMON
+0003 CRT A
+0004 CRT B
+0005 END
+
+jsh area1 ~ -->FIRST.BP
+Welcome to R12FI
+4
+5
+jsh area1 ~ -->FIRST2.BP
+4
+5
+jsh area1 ~ -->
+
+					T24 TRANSACTION
+					================
+Once the jBASE TRANSTART command is used to mark the begining of a 
+transaction block. Once this command is executed, any database update 
+will only be made to the buffer.
+
+jBASE will keep executing the statements until it encounters TRANSEND.
+Once it encounters a TRANSEND, it flushes all buffered data to the disk
+thus ensuring that all updates are flushed together.
+
+if any of the statements within the transaction block fail, then all
+updates made to the buffer will be rolled back and the TRANSABORT statement
+will be internally called by jBASE. 
+
+					THE LOCATE FUNCTION
+					===================
+LOCATE "A" IN Y.ARRAY SETTING POS THEN CRT "A found in :":POS
+LOCATE "B1" IN Y.ARRAY<2,1> SETTING POS THEN CRT "B1 found in :":POS
+LOCATE "B2" IN Y.ARRAY<2,1> SETTING POS THEN CRT "B2 found in :":POS
+LOCATE "C" IN Y.ARRAY SETTING POS THEN CRT "C found in :":POS
+
+					SUBROUTINES
+					===========
+> Executed from within T24 (Not from the jsh prompt)
+> Can make use of T24 APIs 
+
+					Skeleton
+					========
+*Comments 
+SUBROUTINE SubroutineName
+			Actual Statements
+			Actual Statements
+RETURN
+END
+=====================================0=====================================
+jsh area1 ~ -->jshow -c TRG.TEST2														--To see the actual library that the routine was cataloged into
+Subroutine:          /test3/t24/testarea/bnk/bnk.run/lib/lib88.so.33
+                     jBC TRG.TEST2 version 12.0 Fri Jul  1 18:55:36 2022
+                     jBC TRG.TEST2 source file MKR.BP
+					 
+jsh area1 ~ -->jshow -a lib88.so.33													      -- To see the contents of the library
+Subroutine object: /test3/t24/testarea/bnk/bnk.run/lib/lib88.so.33, contains 30 subroutines
+        JBC_KCB_2EDISTRICT
+        JBC_R12_2ETELLER_2EPASSBOOK
+        JBC_KCB_2ESECTOR
+        JBC_KCB_2EVILLAGE
+        JBC_KCB_2EVILLAGE_2EFIELDS
+        JBC_BPR_2ECREATE_2EINT_2EAC
+        JBC_R12_2ESTOCK_2EEXCHANGE
+        JBC_R12_2ETEC_2EITEMS
+        JBC_R12_2ETELLER_2EDENOMINATION
+        JBC_BPR_2ECHK_2ECAL_2EBAL
+        JBC_R12_2ESTOCK_2EREGISTER
+        JBC_KCB_2ESECTOR_2EFIELDS
+        JBC_R12_2ESECTOR
+        JBC_R12_2ETARGET
+        JBC_R12_2ESPOKEN_2ELANGUAGE
+        JBC_R12_2ESC_2ETRANS_2ENAME
+        JBC_KCB_2EPROVINCE_2EFIELDS
+        JBC_KCB_2EDISTRICT_2EFIELDS
+        JBC_R12_2ETAX
+        JBC_R12_2ESTO_2ETYPE
+        JBC_R12_2ETRANSACTION
+        JBC_R12_2ETXN_2ETAX_2ECODE
+        JBC_R12_2EUSER_2ESMS_2EGROUP
+        JBC_R12_2ESCSK_2EGEN_2ECONDITION
+        JBC_TRG_2ETEST2
+        JBC_KCB_2ECELLULE
+        JBC_R12_2ESUB_2EASSET_2ETYPE
+        JBC_R12_2ESCPM_2EGEN_2ECONDITION
+        JBC_KCB_2ECELLULE_2EFIELDS
+        JBC_KCB_2EPROVINCE
+
+														F.READU
+														=======
+				Syntax
+						CALL F.READU(Filename,key,Record,File path,ErrorVariable,Option)
+				Example
+						CALL F.READU(FN.ACC,'575311271190252',R.ACC,F.ACC,Y.ACC.ERR,'')
+
+
+
+> Dynamic arrays do not have fixed length nor a data type
+> To store values with multple fields in one dynamic arrays
+	Use delimters such as FM, VM, and SM
+	ex : Field1FMField2FMValue1VMValue2VMValue3VMValue4FMField4FMSubvalue1SMSubvalue2FMField5
+>  A dimension array is a group of dynamic arrays
+> To configure the number of dynamic arrays that the dimension array will be made of, 
+	you can use the statement DIM arrName(size)
+	However, these will be the number of rows that you are limiting, not the number of columns, since the arrays are dynamic.
+	
+

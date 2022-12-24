@@ -1,0 +1,172 @@
+    PROGRAM KCB.UPDATE.OTHER.DETS
+******************************************************************************************************************************************************
+* 
+* THIS ROUTINE DEFAULTS THE GENDER AND SALUTATION FIELD FOR ALL CUSTOMERS WITHOUT GENDER AND MARITAL STATUS INFORMATION IN THE NIDA FILE BY USING THE
+* 6th DIGIT OF THE CUSTOMER'S NATIONAL ID NUMBER
+*
+*******************************************************************************************************************************************************
+
+    $INCLUDE ../T24_BP I_COMMON
+    $INCLUDE ../T24_BP I_EQUATE
+    $INCLUDE ../T24_BP I_F.CUSTOMER
+
+    GOSUB INIT
+    GOSUB PROCESS
+
+    RETURN
+
+INIT:
+
+    FN.CU = 'FBNK.CUSTOMER'
+    F.CU = ''
+    CALL OPF(FN.CU,F.CU)
+
+    CALL GET.LOC.REF("CUSTOMER","KCB.DOC.ID",ID.POS)
+    CALL GET.LOC.REF("CUSTOMER","LEGAL.STATUS",LEGAL.POS1)
+!CALL GET.LOC.REF("CUSTOMER","CUST.TYPE",POS10)
+    CALL GET.LOC.REF("CUSTOMER","CUST.TYPE",POS11)
+    CALL GET.LOC.REF("CUSTOMER","CUS.RELATED.PTY",POS37)
+    CALL GET.LOC.REF("CUSTOMER","CU.RELATION.TYP",POS38)
+    CALL GET.LOC.REF("CUSTOMER","NAICS.CODE",NAICS.POS)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE",PROV)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE",VILL.POS)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLA",VILL.POB)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVIN",PROV.POB)
+    CALL GET.LOC.REF("CUSTOMER","CUS.SE.i",POS34)
+    CALL GET.LOC.REF("CUSTOMER","KIN.MOBILE.NO",KIN.PHONE)
+    CALL GET.LOC.REF("CUSTOMER","CUS.DEGREE.LVL",POS1001)
+    CALL GET.LOC.REF("CUSTOMER","FIELD.STUDY",POS1002)
+    CALL GET.LOC.REF("CUSTOMER","CUST.EMAIL.ID",CUST.EMAIL.ID)
+    CALL GET.LOC.REF("CUSTOMER","CONTACT.EMAIL",CONTACT.EMAIL)
+    CALL GET.LOC.REF("CUSTOMER","CUST.OFF.PHONE",PHONE.POS1)
+    CALL GET.LOC.REF("CUSTOMER","CUST.MOB.PHONE",CUST.MOB.PHONE)
+    CALL GET.LOC.REF("CUSTOMER","KCB.DOC.NAME",NAME.POS1)
+    CALL GET.LOC.REF("CUSTOMER","OCCUPATION1",OCC.PO1)
+
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE",PHY.PROV)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRICT",PHY.DISTRICT)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTOR",PHY.SECTOR)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CELL",PHY.CELL)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE",PHY.VILLAGE)
+
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVIN",BIRTH.PROV)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRI",BIRTH.DISTRICT)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTO",BIRTH.SECTOR)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CEL",BIRTH.CELL)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLA",BIRTH.VILLAGE)
+    CALL GET.LOC.REF("CUSTOMER","KCB.SECTOR",SEC.POS)
+
+    RETURN
+
+PROCESS:
+
+    DEBUG
+
+    SEL.CU = 'SSELECT ':FN.CU
+    CALL EB.READLIST(SEL.CU,CU.LIST,'',CU.CNT,'')
+
+    LOOP
+        REMOVE CU.ID FROM CU.LIST SETTING MORECU
+    WHILE CU.ID:MORECU
+
+        CALL F.READ(FN.CU,CU.ID,R.CU.REC,F.CU,CU.ERR)
+        MY.SECTOR = R.CU.REC<EB.CUS.SECTOR>
+
+        Y.LEGAL.ID = R.CU.REC<EB.CUS.LOCAL.REF,ID.POS>
+        IF Y.LEGAL.ID EQ '' THEN
+            Y.LEGAL.ID = R.CU.REC<EB.CUS.LEGAL.ID>
+        END
+
+        
+!--------------------------------------------------------------------------
+!---------------------------LEGAL ID, GENDER AND TITLE
+
+        IF Y.LEGAL.ID[1,2] EQ 'ID' THEN
+            Y.LEGAL.ID = TRIM(Y.LEGAL.ID)
+            Y.LEGAL.ID = Y.LEGAL.ID[4,16]
+
+            R.CU.REC<EB.CUS.LEGAL.ID> = Y.LEGAL.ID
+
+            IF LEN(Y.LEGAL.ID) EQ '16' THEN
+                IF Y.LEGAL.ID[6] = 7 THEN
+                    Y.GENDER = 'FEMALE'
+
+                    Y.MARITAL.STATUS = R.CU.REC<EB.CUS.MARITAL.STATUS>
+                    Y.TITLE = R.CU.REC<EB.CUS.TITLE>
+
+                    BEGIN CASE
+                    CASE Y.MARITAL.STATUS EQ 'SINGLE'
+
+                        IF Y.TITLE EQ '' THEN
+                            R.CU.REC<EB.CUS.TITLE> = "MISS"
+
+                        END
+                    CASE Y.MARITAL.STATUS EQ 'MARRIED'
+
+                        IF Y.TITLE EQ '' THEN
+                            R.CU.REC<EB.CUS.TITLE> = "MRS"
+                        END
+
+                    CASE OTHERWISE
+
+                        IF Y.TITLE EQ '' THEN
+                            R.CU.REC<EB.CUS.TITLE> = "MS"
+                        END
+                    END CASE
+                END ELSE
+                    Y.GENDER = 'MALE'
+                    IF Y.TITLE EQ '' THEN
+                        R.CU.REC<EB.CUS.TITLE> = "MR"
+                    END
+                END
+            END
+        END
+
+        DOC.ID = R.CU.REC<EB.CUS.LOCAL.REF,ID.POS>
+        IF DOC.ID EQ '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,ID.POS> = DOC.ID
+        END
+
+
+        Y.CLIENT.TYPE = R.CU.REC<EB.CUS.LOCAL.REF,POS11>
+
+        IF Y.CLIENT.TYPE EQ '' THEN
+            IF Y.GENDER EQ 'MALE' OR Y.GENDER EQ 'FEMALE' THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'I'
+            END
+        END
+
+        IF R.CU.REC<EB.CUS.MARITAL.STATUS> EQ '' THEN
+            R.CU.REC<EB.CUS.MARITAL.STATUS> = 'SINGLE'
+        END
+
+        IF  R.CU.REC<EB.CUS.LOCAL.REF,SEC.POS> EQ '1001' AND Y.CLIENT.TYPE EQ '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'I'
+            IF R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'I' THEN
+                R.CU.REC<EB.CUS.MARITAL.STATUS> = 'SINGLE'
+            END
+
+            IF R.CU.REC<EB.CUS.LOCAL.REF,POS1001> EQ '' THEN
+                R.CU.REC<EB.CUS.LOCAL.REF,POS1001> = '4'
+            END
+        END
+
+        IF  R.CU.REC<EB.CUS.LOCAL.REF,SEC.POS> EQ '1020' AND Y.CLIENT.TYPE EQ '' THEN
+            R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'CORPORATE'
+            IF R.CU.REC<EB.CUS.LOCAL.REF,POS11> = 'CORPORATE' THEN
+                R.CU.REC<EB.CUS.MARITAL.STATUS> = 'NA'
+            END
+        END
+
+!-----------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------
+        WRITE R.CU.REC TO F.CU, CU.ID
+
+!CALL F.WRITE(FN.CU, CU.ID, R.CU.REC)
+!CALL JOURNAL.UPDATE(CU.ID)
+
+        KK = KK + 1
+        PRINT "PROCESSING RECORD NUMBER ":KK:" CUSTOMER ID ":CU.ID
+
+    REPEAT
+    RETURN

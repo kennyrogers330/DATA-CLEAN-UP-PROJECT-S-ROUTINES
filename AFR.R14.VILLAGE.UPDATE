@@ -1,0 +1,99 @@
+*************************************************************************************************************************
+* NIDA address codes to R14 codes, to ensure that R14 accurately displays the actual customer address
+* and sectors recorded at NIDA
+*
+**************************************************************************************************************************
+
+    PROGRAM  AFR.R14.VILLAGE.UPDATE
+
+    $INSERT ../T24_BP I_COMMON
+    $INSERT ../T24_BP I_EQUATE
+    $INSERT ../T24_BP I_F.CUSTOMER
+    $INSERT ../BP I_F.VILLAGE
+
+    FN.VIL = "F.EB.VILLAGE"
+    F.VIL = ""
+    CALL OPF(FN.VIL,F.VIL)
+
+    FN.CU = "FBNK.CUSTOMER"
+    F.CU = ""
+    CALL OPF(FN.CU,F.CU)
+
+    CALL GET.LOC.REF("CUSTOMER","FORBIRTH.COUTRY",B.COUNTRY)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.PROVINCE",PROV)
+    CALL GET.LOC.REF("CUSTOMER","CU.ADR.DISTRICT",DISTRICT)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.SECTOR",SECTOR)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.CELL",CELL)
+    CALL GET.LOC.REF("CUSTOMER","CUS.ADR.VILLAGE",VILLAGE)
+
+    SEQ.FILE.NAME='FOLDER.BP'
+    RECORD.NAME='NIDAFILE.txt'
+
+    OPENSEQ SEQ.FILE.NAME,RECORD.NAME TO SEQ.FILE.POINTER ELSE
+        CREATE SEQ.FILE.POINTER ELSE
+            CRT "Unable to create file pointer  to file ":SEQ.FILE.NAME
+        END
+    END
+    OPENSEQ SEQ.FILE.NAME, "NIDA.SEQ.ADR.csv" TO OUT.FILE ELSE
+        CREATE OUT.FILE ELSE
+        END
+    END
+    DEBUG
+    LOOP
+
+        READSEQ Y.MSG FROM SEQ.FILE.POINTER ELSE EOF=1
+
+    WHILE NOT(EOF)
+        CU.ID = FIELD(Y.MSG,',',2)
+        CALL F.READ(FN.CU,CU.ID,R.CU.REC,F.CU,CU.ERROR)
+        MNEMONC = R.CU.REC<EB.CUS.MNEMONIC>
+        PROVINCE = FIELD(Y.MSG,',',28)
+        DISTRICT = FIELD(Y.MSG,',',60)
+        SECTOR = FIELD(Y.MSG,',',42)
+        CELL = FIELD(Y.MSG,',',16)
+        VILLAGE = FIELD(Y.MSG,',',40)
+        PROVNC = R.CU.REC<EB.CUS.LOCAL.REF,PROV>
+        DSTRCT = R.CU.REC<EB.CUS.LOCAL.REF,DISTRICT>
+        Y.SECTOR = R.CU.REC<EB.CUS.LOCAL.REF,SECTOR>
+        Y.CELL = R.CU.REC<EB.CUS.LOCAL.REF,CELL>
+        Y.VILLAGE = R.CU.REC<EB.CUS.LOCAL.REF,VILLAGE>
+
+      SEL.VIL ='SELECT ':FN.VIL:" WITH CELL.NAME EQ ":CELL:" AND VILLAGE.NAME EQ ":VILLAGE
+
+        CALL EB.READLIST(SEL.VIL,VIL.LIST,'',VIL.NO,'')
+
+        IF VIL.LIST EQ '' THEN
+            SEL.VIL = "SELECT ":FN.VIL :" WITH CELL.NAME EQ ":CELL
+            CALL EB.READLIST(SEL.VIL,VIL.LIST,'',VIL.NO,'')
+        END
+
+        LOOP
+            REMOVE VIL.ID FROM VIL.LIST SETTING POS
+        WHILE VIL.ID:POS
+            CALL F.READ(FN.VIL,VIL.ID,R.VIL,F.VIL,VIL.ERR)
+            VILLAGE.ID = R.VIL<VILLAGE.ID>
+            CELL.ID = R.VIL<EB.VIL83.CELL.ID>
+            SECTOR.ID = R.VIL<EB.VIL83.SECTOR.ID>
+            DISTRICT.ID = R.VIL<EB.VIL83.DISTRICT.ID>
+            PROVINCE.ID = R.VIL<EB.VIL83.PROVINCE.ID>
+            R.CU.REC<EB.CUS.LOCAL.REF,PROV> = PROVINCE.ID
+            R.CU.REC<EB.CUS.LOCAL.REF,DISTRICT> = DISTRICT.ID
+            R.CU.REC<EB.CUS.LOCAL.REF,SECTOR> = SECTOR.ID
+            R.CU.REC<EB.CUS.LOCAL.REF,CELL> = CELL.ID
+            R.CU.REC<EB.CUS.LOCAL.REF,VILLAGE> = VILLAGE.ID
+        REPEAT
+
+
+        CALL F.WRITE(FN.CU, CU.ID, R.CU.REC)
+
+        CALL JOURNAL.UPDATE(CU.ID)
+
+        FF = FF +1
+        PRINT "Number of records processed = ":FF
+
+        V.REC = CU.ID:',':VILLAGE:',':VILLAGE.ID:',':CELL:',':CELL.ID:',':SECTOR:',':SECTOR.ID:',':DSTRCT:',':DISTRICT.ID:',':PROVNC:',':PROVINCE.ID
+       PRINT V.REC
+        WRITESEQ V.REC ON OUT.FILE  ELSE PRINT 'ERROR NO FILE'
+    REPEAT
+* RETURN
+END
